@@ -105,6 +105,46 @@ def getScore(standardL, extraL,standardF, extraF):
 ##            score-=1
 ##        i+=1
     return score
+def frequencyAnalysis(text):
+    alphabet="abcdefghijklmnopqrstuvwxyz"
+    frequencies=[]
+    letters=[]
+    for letter in alphabet:
+        count=0
+        for compareLetter in text:
+            if letter==compareLetter.lower():
+                count+=1
+        letters.append(letter)
+        frequencies.append(count)
+    return letters, frequencies, len(text)
+def calculateIndexOfCoincidence(text, keyLength, isDecipheredText):
+    results=[]
+    if(isDecipheredText):
+        results.append(frequencyAnalysis(text))
+    else:
+        monoAlphabetics=[]
+        i=0
+        num=0
+        while num<keyLength:
+            new=[]
+            while i<len(text):
+                new.append(text[i])
+                i+=keyLength
+            monoAlphabetics.append(new)
+            num+=1
+            i=num
+        for monoAlphabetic in monoAlphabetics:
+            results.append(frequencyAnalysis(monoAlphabetic))
+    totalIC=0
+    for result in results:
+        i=0
+        currentIC=0
+        for letter in result[0]:
+            currentIC+=(float(result[1][i])/result[2])*(float(result[1][i])-1.0)/(result[2]-1)
+            i+=1
+        currentIC=currentIC*26
+        totalIC+=currentIC
+    return totalIC/len(results)
 def runEvolution(maxGenerations,numParents, keyLength, cipherText):
     generation=0
     
@@ -118,8 +158,10 @@ def runEvolution(maxGenerations,numParents, keyLength, cipherText):
         #print generation
         #print startingKeys
         for key in startingKeys:
-            letters, frequencies = testFitness(decrypt(cipherText,key))
-            parentScores.append(getScore(standardLetters,letters,standardFrequencies,frequencies))
+            decipheredText=decrypt(cipherText,key)
+            letters, frequencies = testFitness(decipheredText)
+##            parentScores.append(getScore(standardLetters,letters,standardFrequencies,frequencies))
+            parentScores.append((1.73-calculateIndexOfCoincidence(decipheredText,0, True))*1000+getScore(standardLetters,letters,standardFrequencies,frequencies))
         parentSortedScores, parentSortedKeys = sortValues(parentScores, startingKeys)
         i=0
         children=[]
@@ -135,13 +177,14 @@ def runEvolution(maxGenerations,numParents, keyLength, cipherText):
         childrenScores=[]
         for key in children:
             letters, frequencies = testFitness(decrypt(cipherText,key))
-            childrenScores.append(getScore(standardLetters,letters,standardFrequencies,frequencies))
+##            childrenScores.append(getScore(standardLetters,letters,standardFrequencies,frequencies))
+            childrenScores.append((1.73-calculateIndexOfCoincidence(decrypt(cipherText,key),0, True))*1000+getScore(standardLetters,letters,standardFrequencies,frequencies))
         childrenSortedScores, childrenSortedKeys = sortValues(childrenScores, children)
         combinedScores = parentSortedScores+childrenSortedScores
         combinedKeys = parentSortedKeys+childrenSortedKeys
         trashScores, tempKeys = sortValues(combinedScores, combinedKeys)
         startingKeys = tempKeys[:numParents]
-        #print trashScores[0]
+        #print trashScores
         if(checkResolved(startingKeys)):
             break
         generation+=1
